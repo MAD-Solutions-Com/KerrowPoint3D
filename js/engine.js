@@ -4,7 +4,7 @@ const Engine = (() => {
 out vec2 v;void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);v=p;gl_Position=vec4(p*2.-1.,0,1);}`;
   const FS = `#version 300 es
 precision highp float;in vec2 v;out vec4 o;
-uniform sampler2D B,M,S;uniform float t,flash,alpha,zoom,rain,LAll;uniform vec2 sc,zc;uniform vec4 LP[9];uniform vec3 LC[9];uniform vec3 beam;
+uniform sampler2D B,M,S,WM;uniform float t,flash,alpha,zoom,rain,LAll;uniform vec2 sc,zc;uniform vec4 LP[9];uniform vec3 LC[9];uniform vec3 beam;
 float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
 float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<5;i++){s+=a*n(p);p=p*2.03+7.1;a*=.5;}return s;}
@@ -28,7 +28,13 @@ void main(){
     c+=W*r.z*smoothstep(.4,1.,dot(normalize(r.xy+1e-4),normalize(vec2(-.3,-.9))))*length(r.xy)*vec3(.07,.09,.12);
     c+=W*clamp(tr,0.,1.)*vec3(.008,.011,.016);
     c=mix(c,c+flash*vec3(.2,.26,.38)*(.3+cl),W);
-  }else c=texture(B,p).rgb;
+  }else{
+    float wa=texture(WM,p).r;
+    if(wa>.02){vec2 wp=p*vec2(1.,1.8);float d1=fbm(wp*vec2(26.,70.)+vec2(t*.22,t*.05)),d2=fbm(wp*vec2(34.,90.)-vec2(t*.15,-t*.04));
+      vec2 off=(vec2(d1,d2)-.5)*vec2(.0022,.0035)*wa;c=texture(B,p+off).rgb;
+      float sw=fbm(wp*vec2(14.,40.)+vec2(t*.18,-t*.03));c*=1.+wa*.16*(sw-.5);
+      float gl=smoothstep(.72,.95,fbm(wp*vec2(60.,140.)+vec2(t*.5,t*.1)));c+=wa*gl*c*.6;}
+    else c=texture(B,p).rgb;}
   for(int i=0;i<9;i++){if(LP[i].z>.001){vec2 dl=(uv-LP[i].xy)*vec2(16./9.,1.);float gg=exp(-dot(dl,dl)/(LP[i].w*LP[i].w));c+=LC[i]*gg*LP[i].z*max(LAll,W);}}
   vec3 s=texture(S,p).rgb;
   c*=1.+s.r*(f1-1.)+s.g*(f2-1.)+s.b*flash*2.;
@@ -43,10 +49,11 @@ void main(){
   if (!gl) { document.body.innerHTML = '<p style="color:#ddd;padding:40px;font:18px Georgia">This game needs a browser with WebGL 2.</p>'; throw new Error("no webgl2"); }
   function sh(k, s) { const x = gl.createShader(k); gl.shaderSource(x, s); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(x); return x; }
   const P = gl.createProgram(); gl.attachShader(P, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(P, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(P); gl.useProgram(P); gl.bindVertexArray(gl.createVertexArray());
-  const U = {}; for (const n of ["t", "flash", "alpha", "zoom", "rain", "sc", "zc", "LP", "LC", "LAll", "beam", "B", "M", "S"]) U[n] = gl.getUniformLocation(P, n);
-  gl.uniform1i(U.B, 0); gl.uniform1i(U.M, 1); gl.uniform1i(U.S, 2); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  const U = {}; for (const n of ["t", "flash", "alpha", "zoom", "rain", "sc", "zc", "LP", "LC", "LAll", "beam", "B", "M", "S", "WM"]) U[n] = gl.getUniformLocation(P, n);
+  gl.uniform1i(U.B, 0); gl.uniform1i(U.M, 1); gl.uniform1i(U.S, 2); gl.uniform1i(U.WM, 3); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   const cache = new Map(), rooms = {};
   const img = u => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("image failed: " + u)); i.src = u; });
+  let noW = null; function noWater() { if (noW) return noW; noW = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, noW); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255])); return noW; }
   function tex(im) {
     const T = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, T); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im); gl.generateMipmap(gl.TEXTURE_2D);
@@ -57,10 +64,10 @@ void main(){
     const key = roomName + "/" + view; if (cache.has(key)) { const hit = cache.get(key); cache.delete(key); cache.set(key, hit); return hit; }
     const pr = (async () => {
       const meta = (await room(roomName))[view], base = `rooms/${roomName}/${view}/`;
-      const [b, m, s] = await Promise.all(["b.jpg", "m.png", "s.jpg"].map(f => img(base + f)));
+      const [b, m, s, w] = await Promise.all(["b.jpg", "m.png", "s.jpg", ...(meta.water ? ["w.jpg"] : [])].map(f => img(base + f)));
       const ov = {}; await Promise.all(Object.keys(meta.overlays || {}).map(async n => { ov[n] = await img(base + `o_${n}.webp`); }));
       const cv = document.createElement("canvas"); cv.width = b.width; cv.height = b.height; const c2 = cv.getContext("2d");
-      return { key, meta, b, ov, cv, c2, T: { b: tex(b), m: tex(m), s: tex(s) }, opts: {} };
+      return { key, meta, b, ov, cv, c2, T: { b: tex(b), m: tex(m), s: tex(s), w: w ? tex(w) : null }, opts: {} };
     })(); cache.set(key, pr); pr.catch(() => cache.delete(key)); return pr;
   }
   /* keep graphics memory in check: forget the views used longest ago, never the ones on screen or next door */
@@ -77,7 +84,7 @@ void main(){
   function toScreen(x, y) { const [sx, sy] = scale(); return [((x - .5) / sx + .5) * innerWidth, ((y - .5) / sy + .5) * innerHeight]; }
   function toImage(cx, cy) { const [sx, sy] = scale(), x = cx / innerWidth, y = 1 - cy / innerHeight; return [(x - .5) * sx + .5, 1 - ((y - .5) * sy + .5)]; }
   function draw(rec, alpha, zoom, zc, t, fv) {
-    const T = rec.T; [T.b, T.m, T.s].forEach((x, i) => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, x); });
+    const T = rec.T; [T.b, T.m, T.s, T.w || noWater()].forEach((x, i) => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, x); });
     gl.uniform1f(U.alpha, alpha); gl.uniform1f(U.zoom, zoom); gl.uniform2f(U.zc, zc[0], zc[1]); gl.uniform1f(U.rain, rec.opts.rain ? 1 : 0); gl.uniform1f(U.t, t); gl.uniform1f(U.flash, fv);
     const ls = rec.opts.lights ? rec.opts.lights(t) : []; lp.fill(0); lc.fill(0); ls.slice(0, 9).forEach((l, i) => { lp.set([l.x, l.y, l.i, l.r || .011], i * 4); lc.set(l.c, i * 3); }); gl.uniform4fv(U.LP, lp); gl.uniform3fv(U.LC, lc); gl.uniform1f(U.LAll, rec.opts.allLights ? 1 : 0); const bm = rec.opts.beam; gl.uniform3f(U.beam, bm ? bm[0] : -1, bm ? bm[1] : -1, t * .7);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
