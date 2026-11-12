@@ -26,6 +26,7 @@ function quickPage() {
   const tagged = G.log.some(e => e.p), notes = tagged ? G.log.filter(e => e.p === n) : G.log.slice(-3);
   return `<h2>Now</h2>${q ? `<p class="lab">Mr Quick asks</p><p class="hand ask">${esc(q.callback)}</p>` : `<div class="task-now">${$("task").innerHTML}</div>`}<button id="ringQ" class="ringq">Ring Mr Quick</button><p class="lab">Give him your answer, or ask for a hint.</p>`
     + (notes.length ? `<h3>What to do</h3>${notes.map(e => `<p class="note">${esc(e.text)}</p>`).join("")}` : "")
+    + (Object.keys((N && N.bearings) || {}).length ? `<h3>Bearings noted</h3><ul class="brg">${Object.entries(N.bearings).sort().map(([k, d]) => { const [who, id] = k.split(":"); return `<li><b>${who === "tower" ? "From the tower" : "From the harbour office"}</b>: ${pad3(d)}&deg;, ${LNAME[id]}</li>`; }).join("")}</ul>` : "")
     + (hs.length ? `<h3>Hints so far</h3>${hs.map((h, k) => `<div class="hint"><b>Hint ${k + 1}</b><p>${esc(h)}</p></div>`).join("")}` : "");
 }
 function logVoices(id) {

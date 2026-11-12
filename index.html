@@ -153,6 +153,24 @@ details.solved{margin-top:22px;border-top:1px solid rgba(60,45,25,.35);padding-t
 #chartHelp li{margin:0 0 5px}
 #chText{font:italic 15px/1.35 P;color:#ffd99a}
 #chText:empty{display:none}
+
+#chartHelp{width:min(330px,24vw);top:96px}
+.crow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;width:100%}
+.clab{font:italic 14px P;color:#d9c79d;min-width:74px}
+.cbtn{font:400 15px P;padding:6px 11px;background:#2b2115;color:#efe3c6;border:1px solid #6a4f28;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(201,163,92,.35)}
+.cbtn:hover{background:#4a3519}.cbtn.on{background:#c9a35c;color:#1d150b;border-color:#e7c98a}.cbtn.main{border-color:#c9a35c}
+#cDeg{width:64px;font:400 22px/1 P;letter-spacing:.12em;text-align:center;padding:4px 6px;background:#f3ead4;color:#231e16;border:0;box-shadow:inset 0 1px 3px rgba(0,0,0,.5)}
+.degs{font:400 22px P;color:#efe3c6;margin:0 4px 0 -2px}
+#cLines{display:flex;gap:5px;flex-wrap:wrap;width:100%}
+.cl{font:400 13px P;padding:2px 7px;border:1px solid rgba(232,223,202,.35)}.cl.t{color:#a9c8e0}.cl.h{color:#f0a890}.cl.dead{opacity:.35;text-decoration:line-through}.cl.none{opacity:.6;font-style:italic;border:0}
+#hbc{position:fixed;inset:0;z-index:4;pointer-events:none}
+#hbTape{position:absolute;left:0;top:64px;width:100%;height:46px}
+#hbLine{position:absolute;top:110px;bottom:120px;width:2px;margin-left:-1px;background:linear-gradient(rgba(255,210,122,.95),rgba(255,210,122,0));left:50%}
+#hbRead{position:absolute;top:-2px;left:8px;font:400 20px P;color:#ffd27a;text-shadow:0 1px 4px #000;white-space:nowrap}
+#hbHint{position:absolute;left:50%;top:116px;transform:translateX(-50%);font:italic 16px P;color:#efe3c6;background:rgba(10,7,4,.62);padding:5px 14px}
+#noteP{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateX(170px);z-index:6}
+#noteB{font:400 18px P;padding:10px 20px;background:#2b2115;color:#f3dfae;border:1px solid #c9a35c;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.6)}#noteB:hover{background:#6b4a1c}
+ul.brg{margin:4px 0 10px;padding-left:18px}ul.brg li{margin:2px 0}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="loading"><div class="lt">The Last Light at Kerrow Point</div><div class="lbar"><i id="loadBar"></i></div></div><div id="loadHint" hidden>Loading&hellip;</div>
@@ -172,6 +190,6 @@ details.solved{margin-top:22px;border-top:1px solid rgba(60,45,25,.35);padding-t
 <div id="how" hidden><button class="x" id="howX" aria-label="Close">&times;</button><h2>How to play</h2><p>Two players, each on their own device. One of you is in the lighthouse, the other in the harbour office, and you each see different things.</p><p>Talk to each other the whole time, on a call or across a table. Neither of you can solve anything alone.</p><p>One of you hosts and shares the code. Click things in the room to look closer. Your notebook keeps what Mr Quick is asking and what you have found, and the log keeps everything he has said. Ring Mr Quick on the telephone when you have an answer, or if you need a hint.</p><p class="credit">Voices made with ElevenLabs.</p></div>
 <div id="tut" hidden><div class="tb"><h3>Your journal</h3><p>Open it to see what Mr Quick wants, your progress and your clues. When you have an answer, ring him on the telephone.</p><button id="tutOk">Got it</button></div><span class="ta"></span></div>
 <div id="scene" hidden><div id="who"></div><div id="subtitle"></div><div id="callHint"></div></div>
-<div id="flash" hidden></div><div id="gt" hidden></div><div id="chartHelp" hidden><h4>Ruling a bearing</h4><ol><li>Press on the <b>tower</b> or the <b>harbour office</b>.</li><li>Drag out towards the bearing.</li><li>Let go, and the line is ruled.</li></ol><span id="chText"></span><button id="chShow">Show me</button></div><div id="penDemo" hidden></div><button id="clr" hidden>Rub out my lines</button><div id="endc" hidden></div>
+<div id="flash" hidden></div><div id="gt" hidden></div><div id="chartHelp" hidden><h4>The chart table</h4><ol><li>Click the <b>tower</b> or the <b>harbour office</b> on the chart.</li><li>Type a bearing from the notebook and press <b>Draw line</b>.</li><li>Click a square where lines cross and press <b>Mark crossing</b>.</li></ol><div class="crow"><span class="clab">Rule from</span><button id="cfT" class="cbtn">Tower</button><button id="cfH" class="cbtn">Harbour office</button></div><div class="crow"><span class="clab">Bearing</span><input id="cDeg" inputmode="numeric" maxlength="3" placeholder="000" autocomplete="off"><span class="degs">&deg;</span><button id="cDraw" class="cbtn main">Draw line</button></div><div class="crow"><button id="cMark" class="cbtn main">Mark crossing</button><button id="cRub" class="cbtn">Rub out all</button></div><div id="cLines"></div><span id="chText"></span></div><div id="hbc" hidden><canvas id="hbTape"></canvas><div id="hbLine"><span id="hbRead">000&deg;</span></div><div id="hbHint">Hand-bearing compass: click a light to take its bearing</div></div><div id="noteP" hidden><button id="noteB">Note bearing</button></div><div id="penDemo" hidden></div><button id="clr" hidden>Rub out my lines</button><div id="endc" hidden></div>
 <script src="js/peerjs.min.js"></script><script src="js/net.js"></script><script src="js/crypto.js"></script><script src="js/engine.js"></script><script src="js/journal.js"></script><script src="js/game.js"></script>
 </body></html>

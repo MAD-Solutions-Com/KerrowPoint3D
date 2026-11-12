@@ -21,7 +21,7 @@ const WORLD = {
     burner: { room: "lamp", back: "lamp", thought: "A sealed can, a pump, a spirit cup, an oil valve and the clockwork. The office has the order.", hots: { can: { type: "step", n: 0 }, pump: { type: "step", n: 1 }, cup: { type: "step", n: 2, item: "matches" }, valve: { type: "step", n: 3 }, clock: { type: "step", n: 4 } } },
     berthsv: { back: "wide", read: "berths", thought: "Every boat in the harbour, by berth. The keeper kept it for his watch.", hots: {} },
     lit: { room: "lamp", back: "lamp", hots: {} },
-    gallery: { room: "lamp", back: "lamp", read: "sight", pano: 1, thought: "The gallery, and the brass compass. Drag to look round. When a light sits under the pointer, read the card.", hots: {} } } },
+    gallery: { room: "lamp", back: "lamp", read: "sight", pano: 1, thought: "The gallery and the brass compass. Drag to look round; put a light under the pointer and note its bearing.", hots: {} } } },
   office: { room: "office", start: "wide", views: {
     wide: { hots: { zweather: { type: "go", view: "zweather", label: "The weather bench" }, zlights: { type: "go", view: "zlights", label: "Chart table and window" }, zrecords: { type: "go", view: "zrecords", label: "Notices and records" }, telephone: G_("phone") } },
     zweather: { back: "wide", thought: "The weather bench. The barograph, Mr Quick's weather book, and the harbour register.", hots: { barograph: G_("barograph"), weather: G_("weather"), register: G_("register"), telephone: { type: "go", view: "phone", quiet: 1 } } },
@@ -32,12 +32,12 @@ const WORLD = {
     phone: { back: "wide", thought: "The line to the tower. Crank the handle and I can reach Mr Quick.", hots: { crank: { type: "call" } } },
     board: { back: "zrecords", read: "board", thought: "Harbour notices, and a slate of the ships due tonight.", hots: { keybox: { type: "open", item: "storekey", flag: "box" } } },
     window: { back: "zlights", read: "sill", thought: "Rain on the panes, and the brass strip on the sill says which light lies where.", hots: { glass: { type: "go", view: "bayH", rect: [.1, .08, .9, .88], label: "Look out to sea" } } },
-    bayH: { room: "bay", back: "window", read: "sill", thought: "The whole bay from the harbour. Mr Quick will want to know what you can see.", hots: {} },
+    bayH: { room: "bay", back: "window", read: "sill", compass: [-18, 112], thought: "The whole bay from the harbour. The hand-bearing compass is on the sill: click a light to take its bearing.", hots: {} },
     reportv: { back: "zlights", read: "report", thought: "Mr Quick's watch report, sent over the wire from the hut. Every light he has seen tonight.", hots: {} },
     register: { back: "zweather", read: "register", thought: "The harbour register. Every ship expected tonight.", hots: {} },
     moorbook: { back: "zrecords", read: "moor", thought: "The mooring book. Every boat that lies here, and what she draws.", hots: {} },
     tagv: { back: "zrecords", read: "tags", thought: "The berth board. A tag on the hook means the boat is in.", hots: {} },
-    tchart: { back: "zlights", read: "bearings", hots: { bearn: G_("bearn") } },
+    tchart: { back: "zlights", read: "bearings", hots: {} },
     bearn: { back: "tchart", read: "bearings", thought: "Bearings the harbour office took, at the same moments as the tower.", hots: {} },
     doorv: { back: "zrecords", read: "receipt", thought: "The oil store, under the stairs. Treloar's receipt is nailed to the door.", hots: { enter: { type: "go", view: "store", nav: 1, label: "Go into the oil store", item: "storekey", msg: "Locked. You need a key.", item2: "lantern", msg2: "It's pitch dark in there. I need a light." } } },
     store: { room: "store", back: "doorv", thought: "The oil store. A barrel and some cans, and what's left in them.", hots: { barrel: G_("barrelv"), cans: G_("cansv") } },
@@ -95,7 +95,7 @@ function readText(kind) {
   if (kind === "tide") return T("Tide table", P.tide.map(([t, h]) => [t, h.toFixed(2) + " m above chart depth"])) + `<p style="margin-top:12px">The Kerrow Bar has ${P.bar} m of water at chart depth, plus the tide. No master takes a ship over it without ${P.keel} m of water under her keel. E.T.</p>`;
   if (kind === "morse") return `<h3>Morse</h3><p class="lab">Short flash, dot. Long flash, dash.</p><div style="columns:2;column-gap:32px">${Object.entries(P.morse).map(([k, v]) => `<div style="break-inside:avoid;padding:3px 0"><b style="display:inline-block;width:1.6em">${k}</b>${v.replace(/\./g, "\u2022 ").replace(/-/g, "\u2014 ")}</div>`).join("")}</div>`;
   if (kind === "report") return T("Watch report", P.watch.map(([t, c, p]) => [t, c + (p ? `, every ${p} seconds` : "")]));
-  if (kind === "bearings") return T("Bearings from the harbour office", [["Steady glow", P.bearings_harbour.glow], ["Warm lights", P.bearings_harbour.hall], ["Flashing light", P.bearings_harbour.flasher]]);
+  if (kind === "bearings") return `<h3>The chart table</h3><p>Rule each noted bearing from the place it was taken: the tower or the harbour office. Where a tower line crosses a harbour line, that light is in the square. Mark the crossings ashore, and their lines can go.</p>`;
   if (kind === "berths") return T("Boats of the harbour, by berth", P.berths.map(([b, n]) => [b, n]));
   if (kind === "moor") return T("Mooring book: what each boat draws", P.draught.map(([n, d]) => [n, d + " m"]));
   if (kind === "tags") return T("The berth board", P.berths.map(([b]) => [b, P.empty[b] ? "no tag. Chalked: " + P.empty[b] : "tag on the hook"]));
@@ -149,7 +149,7 @@ const C = $("c"), ring = $("ring");
 function clearEdges() { const t_ = $("tip"); if (t_) t_.hidden = true; $("edgeL").classList.remove("on"); $("edgeR").classList.remove("on"); ring.classList.remove("hot", "edge"); }
 addEventListener("mousemove", e => { ring.style.transform = `translate(${e.clientX}px,${e.clientY}px)`; const onGame = e.target === C; ring.classList.toggle("gone", !onGame || anyOpen()); if (!onGame || busy || !W_ || !rec || !$("title").hidden) { clearEdges(); return; } const h = hit(e.clientX, e.clientY); ring.classList.toggle("hot", !!(h && !h.edge)); const tip = $("tip"); if (h && !h.edge && hotLabel(h.id, h.act)) { tip.textContent = hotLabel(h.id, h.act); tip.style.transform = `translate(${e.clientX + 30}px,${e.clientY + 16}px)`; tip.hidden = false; } else tip.hidden = true; ring.classList.toggle("edge", !!(h && h.edge)); $("edgeL").classList.toggle("on", !!(h && h.edge === "L")); $("edgeR").classList.toggle("on", !!(h && h.edge === "R")); });
 C.addEventListener("contextmenu", e => { e.preventDefault(); goBack(); });
-C.addEventListener("click", e => { ctx(); if (anyOpen() || busy || Engine.busy() || !W_ || !rec || !$("title").hidden) return; const h = hit(e.clientX, e.clientY); if (!h) return; if (h.edge) { sfx.tick(); clearEdges(); enter(W_.views[view].back, -1); return; } use(h); });
+C.addEventListener("click", e => { ctx(); if (anyOpen() || busy || Engine.busy() || !W_ || !rec || !$("title").hidden) return; const h = hit(e.clientX, e.clientY); if (!h) { if (view === "bayH") harbourBearing(e); return; } if (h.edge) { sfx.tick(); clearEdges(); enter(W_.views[view].back, -1); return; } use(h); });
 let pourAnim = null;
 const STEP_OK = ["The reservoir fills.", "The needle climbs to the red line.", "The spirit cup catches.", "Oil hisses into the burner.", "The clockwork catches, and the lens begins to turn."], STEP_FX = [() => sfx.drawer(), () => sfx.ratchet(), () => play("match", .9), () => sfx.ratchet(), () => play("ignite", .8)];
 async function use(h) {
@@ -256,7 +256,7 @@ const WH = [1, .95, .8], WARM = [1, .7, .3], RED = [1, .1, .08];
 let flashAct = null;
 function lightsFor(name, meta) {
   const P = (id, fn, c, r) => { const h = meta.hots[id]; return h ? t => ({ x: (h[0] + h[2]) / 2, y: 1 - (h[1] + h[3]) / 2, i: fn(t), c, r }) : null; }, list = [];
-  if (name === "bayT" || name === "bayH") list.push(P("gannet", t => (flashAct ? 0 : pat([.5, .5, .5], 15, t)) * 1.8, WH, .014), P("aldo", t => (flashAct ? 0 : pat([1.6], 5, t)) * 1.8, WH, .014), P("blackhen", t => (flashAct ? 0 : pat([.5, 1.5], 8, t)) * 1.8, WH, .014), P("carn", t => .9, WARM, .008), P("penmor", t => .85 + .12 * Math.sin(t * 2.1), [1, .72, .35], .016), P("red", t => 1.3, RED, .01), P("false", t => (flashAct ? 0 : irr(t)) * 1.6, WH, .012));
+  if (name === "bayT" || name === "bayH") list.push(P("gannet", t => (flashAct ? 0 : pat([.5, .5, .5], 15, t)) * 2.2, WH, .022), P("aldo", t => (flashAct ? 0 : pat([1.6], 5, t)) * 2.2, WH, .022), P("blackhen", t => (flashAct ? 0 : pat([.5, 1.5], 8, t)) * 2.2, WH, .022), P("carn", t => 1.3, WARM, .016), P("penmor", t => 1.25 + .15 * Math.sin(t * 2.1), [1, .72, .35], .024), P("red", t => 1.5, RED, .016), P("false", t => (flashAct ? 0 : irr(t)) * 2.2, WH, .02));
   if (name === "bayH") list.push(...["W", "NW", "NE", "ship"].map(b => P(b, t => flashI(b), WH, .018)));
   if (name.startsWith("sight")) { const k = +name.slice(5), D_ = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"], b = pub.docs.bearings_tower; if (D_[k] === b.glow) list.push(P("l0", t => .8, WH, .008)); if (D_[k] === b.hall) list.push(P("l0", t => .85 + .12 * Math.sin(t * 2.1), [1, .72, .35], .012)); if (D_[k] === b.flasher) list.push(P("l0", t => irr(t) * 1.5, WH, .013)); }
   const fs = list.filter(Boolean); return t => fs.map(f => f(t));
@@ -275,18 +275,18 @@ addEventListener("mousemove", e => { const M = $("mag"); const ok = e.target ===
 /* ---- the gallery: one 360-degree picture you drag round, with a compass card that turns with you ---- */
 let panoImg = null, head = 0, headGo = null, panoRAF = 0;
 const PTS8 = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"], headName = () => PTS8[Math.round(((head % 360) + 360) % 360 / 45) % 8];
-function panoOff() { $("pano").hidden = true; $("rose").hidden = true; $("panoBack").hidden = true; cancelAnimationFrame(panoRAF); }
+function panoOff() { $("pano").hidden = true; $("rose").hidden = true; $("noteP").hidden = true; $("panoBack").hidden = true; cancelAnimationFrame(panoRAF); }
 async function enterPano(name) {
   if (!panoImg) { $("loadHint").hidden = false; panoImg = await new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = "rooms/lamp/gpano.jpg"; }); $("loadHint").hidden = true; if (!panoImg) { toast("That picture failed to load. Check your connection and try again."); return; } }
   view = name; G.at = name; save(); ambSet(ambFor(name)); noteClue("sight"); $("marks").innerHTML = ""; $("read").hidden = false; ["edgeL", "edgeR"].forEach(e => $(e).classList.remove("avail")); $("flash").hidden = true; $("clr").hidden = true; $("chartHelp").hidden = true;
   const firstLook = !(G.saw || {})[name]; if (firstLook) { G.saw = { ...(G.saw || {}), [name]: 1 }; save(); } thought(firstLook ? W_.views[name].thought : null);
-  $("pano").hidden = false; $("rose").hidden = false; $("backZ").hidden = false; drawPano(); }
+  $("pano").hidden = false; $("rose").hidden = false; $("noteP").hidden = false; $("backZ").hidden = false; drawPano(); }
 function drawPano() { const cv = $("pano"), c = cv.getContext("2d"), W = cv.width = innerWidth, H = cv.height = innerHeight, im = panoImg, Wp = im.width, Hp = im.height, sh = Hp * .78, s = H / sh, sw = W / s, y0 = Hp * .1;
   if (headGo !== null) { const d = ((headGo - head + 540) % 360) - 180; head += Math.abs(d) < .4 ? d : d * .18; if (Math.abs(d) < .4) headGo = null; }
   const cx = ((head / 360 + .5) * Wp - sw / 2 + Wp * 4) % Wp; c.drawImage(im, cx, y0, Math.min(sw, Wp - cx), sh, 0, 0, Math.min(sw, Wp - cx) * s, H); if (cx + sw > Wp) c.drawImage(im, 0, y0, cx + sw - Wp, sh, (Wp - cx) * s, 0, (cx + sw - Wp) * s, H);
-  const t = performance.now() / 1000, hy = (Hp * .528 - y0) * s, b = pub.docs.bearings_tower, L = [[b.glow, .8, "255,244,214", 18], [b.hall, .85 + .12 * Math.sin(t * 2.1), "255,190,110", 26], [b.flasher, irr(t) * 1.5, "255,250,235", 20]];
-  for (const [d, i, col, r] of L) { if (i <= 0) continue; const az = PTS8.indexOf(d) * 45, dx = ((az - head + 540) % 360 - 180) / 360 * Wp * s, x = W / 2 + dx; if (x < -60 || x > W + 60) continue; const gr = c.createRadialGradient(x, hy, 0, x, hy, r * 2.4); gr.addColorStop(0, `rgba(${col},${Math.min(1, i)})`); gr.addColorStop(.25, `rgba(${col},${Math.min(.5, i * .4)})`); gr.addColorStop(1, `rgba(${col},0)`); c.fillStyle = gr; c.fillRect(x - r * 3, hy - r * 3, r * 6, r * 6); }
-  $("roseCard").style.transform = `rotate(${-head}deg)`; $("roseRead").textContent = headName();
+  const t = performance.now() / 1000, hy = (Hp * .528 - y0) * s, L = panoLights(t);
+  for (const [az, i, col, r] of L) { if (i <= 0) continue; dx = ((az - head + 540) % 360 - 180) / 360 * Wp * s, x = W / 2 + dx; if (x < -60 || x > W + 60) continue; const gr = c.createRadialGradient(x, hy, 0, x, hy, r * 2.4); gr.addColorStop(0, `rgba(${col},${Math.min(1, i)})`); gr.addColorStop(.25, `rgba(${col},${Math.min(.5, i * .4)})`); gr.addColorStop(1, `rgba(${col},0)`); c.fillStyle = gr; c.fillRect(x - r * 3, hy - r * 3, r * 6, r * 6); }
+  $("roseCard").style.transform = `rotate(${-head}deg)`; $("roseRead").textContent = pad3(head) + "\u00b0";
   panoRAF = requestAnimationFrame(() => { if (!$("pano").hidden) drawPano(); }); }
 (() => { const P = $("pano"); let x0 = null, h0 = 0; P.onpointerdown = e => { x0 = e.clientX; h0 = head; headGo = null; P.setPointerCapture && P.setPointerCapture(e.pointerId); }; P.onpointermove = e => { if (x0 === null) return; head = h0 - (e.clientX - x0) * (360 / (panoImg.width * (innerHeight / (panoImg.height * .78)))); };
   P.onpointerup = () => { if (x0 === null) return; x0 = null; headGo = Math.round(head / 45) * 45; sfx.ratchet(); }; $("panoBack").onclick = () => { sfx.tick(); goBack(); };
@@ -304,28 +304,57 @@ $("mtog").onclick = () => { sfx.tick(); document.body.classList.toggle("nomarks"
 function uiFor(name) {
   $("marks").innerHTML = ""; $("zone").innerHTML = ""; setTimeout(placeMarks, 340); $("backZ").hidden = !W_.views[name].back; if (W_.views[name].back) firstOnce("kerrow-back1", () => { const b_ = $("backZ"); b_.classList.add("first"); setTimeout(() => b_.classList.remove("first"), 5000); }); const bk = false; $("edgeL").classList.toggle("avail", bk); $("edgeR").classList.toggle("avail", bk);
   const showF = !!G.flash && (name === "bayH" || (G.role === "tower" && name === "morse")); $("flash").hidden = !showF; if (showF) flashSheet();
-  $("clr").hidden = name !== "tchart"; $("chartHelp").hidden = name !== "tchart"; if (name === "tchart") { chartText(); if (!G.chartDemo) { G.chartDemo = true; save(); setTimeout(chartDemo, 1200); } } else stopDemo();
+  $("clr").hidden = true; $("chartHelp").hidden = name !== "tchart"; if (name === "tchart") { chartText(); listLines(); } $("hbc").hidden = name !== "bayH"; $("noteP").hidden = true; if (name === "bayH") setTimeout(hbTape, 400);
 }
-$("clr").onclick = () => { G.lines = []; save(); refresh(); }; $("chShow").onclick = () => { sfx.tick(); chartDemo(); };
+$("clr").onclick = () => { G.lines = []; save(); refresh(); }; 
 /* ---- ruling lines on the chart ---- */
 let drag = null, rTick = false, chartHov = null, demoRun = null, demoT = null; const SX = 420, SY = 360, mk = c => [34 + c[0] * 40 + 20, 24 + c[1] * 40 + 20];
 function svgAt(e) { const [x, y] = Engine.toImage(e.clientX, e.clientY), r = rec.meta.hots.paper; return [(x - r[0]) / (r[2] - r[0]) * SX, (y - r[1]) / (r[3] - r[1]) * SY]; }
-function drawFor(name) { if (name !== "tchart") return null; return (c, W, H) => { const r = rec.meta.hots.paper, px = x => (r[0] + x / SX * (r[2] - r[0])) * W, py = y => (r[1] + y / SY * (r[3] - r[1])) * H; c.save(); c.beginPath(); c.rect(px(34), py(24), px(354) - px(34), py(344) - py(24)); c.clip(); c.lineCap = "round"; c.strokeStyle = "rgba(30,28,40,.85)"; c.lineWidth = W / 700; const rr = 15 / SX * (r[2] - r[0]) * W; for (const k of marksOn()) { const on = chartHov === k.id || (drag && drag.id === k.id); c.save(); c.shadowColor = "rgba(255,214,120,.95)"; c.shadowBlur = W / (on ? 70 : 110); c.strokeStyle = on ? "rgba(255,226,150,1)" : "rgba(255,240,205,.9)"; c.lineWidth = W / (on ? 300 : 480); for (let n = 0; n < 2; n++) { c.beginPath(); c.arc(px(k.o[0]), py(k.o[1] - 2), rr, 0, 7); c.stroke(); } c.restore(); }
-    for (const l of G.lines) { c.beginPath(); c.moveTo(px(l.o[0]), py(l.o[1])); c.lineTo(px(l.o[0] + Math.cos(l.a) * 600), py(l.o[1] + Math.sin(l.a) * 600)); c.stroke(); } if (demoRun) { c.strokeStyle = demoRun.done ? "rgba(30,28,40,.85)" : "rgba(170,130,50,.8)"; c.lineWidth = demoRun.done ? W / 700 : W / 90; c.beginPath(); c.moveTo(px(demoRun.o[0]), py(demoRun.o[1])); c.lineTo(px(demoRun.o[0] + Math.cos(demoRun.a) * demoRun.len), py(demoRun.o[1] + Math.sin(demoRun.a) * demoRun.len)); c.stroke(); } if (drag && drag.moved) { c.strokeStyle = "rgba(170,130,50,.8)"; c.lineWidth = W / 90; c.beginPath(); c.moveTo(px(drag.o[0]), py(drag.o[1])); c.lineTo(px(drag.o[0] + Math.cos(drag.a) * 600), py(drag.o[1] + Math.sin(drag.a) * 600)); c.stroke(); } c.restore(); }; }
+const chartImg = new Image(); chartImg.onload = () => { if (view === "tchart") refresh(); }; chartImg.src = "data/chartmap.svg";
+const cpt = p => [34 + p[0] * 40, 24 + p[1] * 40], ORG = () => ({ t: cpt(pub.docs.tower_pt), h: cpt(pub.docs.harbour_pt) });
+const cRay = (o, d) => { const r = d * Math.PI / 180; return [o[0] + Math.sin(r) * 900, o[1] - Math.cos(r) * 900]; };
+function cCross(a, b) { const p = a.o, r = [a.e[0] - p[0], a.e[1] - p[1]], q = b.o, s_ = [b.e[0] - q[0], b.e[1] - q[1]], rs = r[0] * s_[1] - r[1] * s_[0]; if (Math.abs(rs) < 1e-9) return null; const t = ((q[0] - p[0]) * s_[1] - (q[1] - p[1]) * s_[0]) / rs, u = ((q[0] - p[0]) * r[1] - (q[1] - p[1]) * r[0]) / rs; return t > .01 && u > .01 && t < 1 && u < 1 ? [p[0] + t * r[0], p[1] + t * r[1]] : null; }
+const sqOf = p => { const c = Math.floor((p[0] - 34) / 40), r = Math.floor((p[1] - 24) / 40); return c >= 0 && c < 8 && r >= 0 && r < 8 ? [c, r] : null; }, sqName = s => "ABCDEFGH"[s[0]] + (s[1] + 1);
+const cLines = () => (G.clines || []).map((l, i) => { const o = ORG()[l.from]; return { ...l, i, o, e: cRay(o, l.deg) }; });
+const PLACES = () => Object.entries(pub.docs.places_pt).map(([name, p]) => ({ name, p: cpt(p) }));
+function liveCrossings() { const L = cLines(), out = []; for (const a of L) for (const b of L) { if (a.from !== "t" || b.from !== "h" || a.dead || b.dead) continue; const p = cCross(a, b); if (p && sqOf(p) && !PLACES().some(q => Math.hypot(q.p[0] - p[0], q.p[1] - p[1]) < 14)) out.push(p); } return out; }
+let cFrom = null, cSq = null;
+function drawFor(name) { if (name !== "tchart") return null; return (c, W, H) => { const r = rec.meta.hots.paper, px = x => (r[0] + x / SX * (r[2] - r[0])) * W, py = y => (r[1] + y / SY * (r[3] - r[1])) * H, u = (r[2] - r[0]) * W / SX;
+    c.save(); c.beginPath(); c.rect(px(34), py(24), px(354) - px(34), py(344) - py(24)); c.clip(); c.lineCap = "round";
+    if (cSq) { c.fillStyle = "rgba(255,210,120,.22)"; c.strokeStyle = "rgba(170,120,40,.9)"; c.lineWidth = u * 1.4; c.fillRect(px(34 + cSq[0] * 40), py(24 + cSq[1] * 40), 40 * u, 40 * u); c.strokeRect(px(34 + cSq[0] * 40), py(24 + cSq[1] * 40), 40 * u, 40 * u); }
+    for (const l of cLines()) { c.globalAlpha = l.dead ? .2 : .92; c.strokeStyle = l.from === "t" ? "#1f4a68" : "#7a1c10"; c.lineWidth = u * 1.15; c.beginPath(); c.moveTo(px(l.o[0]), py(l.o[1])); c.lineTo(px(l.e[0]), py(l.e[1])); c.stroke(); }
+    c.globalAlpha = 1; c.font = `italic ${u * 7}px Georgia`;
+    for (const l of cLines()) { const k = l.from === "t" ? .07 : .05, x = l.o[0] + (l.e[0] - l.o[0]) * k, y = l.o[1] + (l.e[1] - l.o[1]) * k; c.globalAlpha = l.dead ? .3 : 1; c.lineWidth = u * 2.6; c.strokeStyle = "#ece4cc"; c.strokeText(pad3(l.deg) + "\u00b0", px(x + 3), py(y)); c.fillStyle = l.from === "t" ? "#1f4a68" : "#7a1c10"; c.fillText(pad3(l.deg) + "\u00b0", px(x + 3), py(y)); }
+    c.globalAlpha = 1;
+    for (const m of G.cmarks || []) { const dead = !m.place && m.ids.some(i => (G.clines[i] || {}).dead); c.globalAlpha = dead ? .25 : 1; c.lineWidth = u * 1.6; c.strokeStyle = m.place ? "#1d6b2f" : "#a33a2a"; c.beginPath(); c.arc(px(m.p[0]), py(m.p[1]), u * 7, 0, 7); c.stroke();
+      c.font = `${u * (m.place ? 7 : 10)}px Georgia`; c.fillStyle = c.strokeStyle; if (!m.place) { c.textAlign = "center"; c.fillText("?", px(m.p[0]), py(m.p[1] + 3.5)); c.textAlign = "start"; } }
+    c.globalAlpha = 1; c.restore();
+    for (const [k, o] of Object.entries(ORG())) { const on = cFrom === k || chartHov === k; c.save(); c.shadowColor = "rgba(255,214,120,.95)"; c.shadowBlur = W / (on ? 70 : 120); c.strokeStyle = on ? "rgba(255,222,140,1)" : "rgba(255,240,205,.85)"; c.lineWidth = W / (on ? 320 : 520); for (let n = 0; n < 2; n++) { c.beginPath(); c.arc(px(o[0]), py(o[1] - 3), u * 13, 0, 7); c.stroke(); } c.restore(); }
+  }; }
 const DN = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"], HELP = "";
-const marksOn = () => [{ id: "t", o: mk(pub.docs.tower_cell), name: "Tower" }, { id: "h", o: mk(pub.docs.harbour_cell), name: "Harbour office" }];
+
 const nearMark = p => marksOn().find(k => Math.hypot(p[0] - k.o[0], p[1] - k.o[1]) < 28);
 const inPaper = p => p[0] >= 0 && p[0] <= SX && p[1] >= 0 && p[1] <= SY;
 let chartT; function chartText(t) { clearTimeout(chartT); $("chText").textContent = t || HELP; } function chartSay(t) { chartText(t); chartT = setTimeout(chartText, 3500); }
 function showTip(t, e) { const tip = $("tip"); tip.textContent = t; tip.style.transform = `translate(${e.clientX + 30}px,${e.clientY + 16}px)`; tip.hidden = false; }
+function chartDemo() {}
 function stopDemo() { clearInterval(demoT); demoT = null; $("penDemo").hidden = true; if (demoRun) { demoRun = null; refresh(); } }
-function chartDemo() { if (view !== "tchart" || !rec || anyOpen()) return; stopDemo(); const used = new Set(Object.values(pub.docs.bearings_harbour)), o = mk(pub.docs.harbour_cell), len = 110, ang = d => DN.indexOf(d) * Math.PI / 4 - Math.PI / 2, fits = d => { const x = o[0] + Math.cos(ang(d)) * len, y = o[1] + Math.sin(ang(d)) * len; return x > 34 && x < 354 && y > 24 && y < 344; }, d = DN.find(x => !used.has(x) && fits(x)) || DN.find(fits), a = ang(d), r = rec.meta.hots.paper, pen = $("penDemo"), t0 = performance.now(); chartText("Like this: press on the mark, drag towards the bearing, let go."); pen.hidden = false;
-  demoT = setInterval(() => { const u = (performance.now() - t0) / 2400; if (view !== "tchart" || u > 1.3) { stopDemo(); chartText(); return; } const e = u < .2 ? 0 : Math.min(1, (u - .2) / .8), l = len * e * (2 - e); demoRun = { o, a, len: u >= 1 ? 600 : l, done: u >= 1 }; refresh(); const [x, y] = Engine.toScreen(r[0] + (o[0] + Math.cos(a) * l) / SX * (r[2] - r[0]), r[1] + (o[1] + Math.sin(a) * l) / SY * (r[3] - r[1])); pen.style.transform = `translate(${x}px,${y}px)`; }, 50); }
-C.addEventListener("mousedown", e => { if (view !== "tchart" || anyOpen() || !rec || busy) return; stopDemo(); const p = svgAt(e), k = nearMark(p); if (k) { drag = { o: k.o, id: k.id, a: 0, moved: false, x: e.clientX, y: e.clientY }; sfx.tick(); chartText("Keep holding, and drag towards the bearing."); } else if (inPaper(p)) chartSay("Start on the tower or the harbour office, where the marks glow."); });
-addEventListener("mousemove", e => { if (view !== "tchart" || !rec || !W_ || !$("title").hidden) { ring.classList.remove("pencil"); chartHov = null; return; } const p = svgAt(e), on = e.target === C && !anyOpen() && inPaper(p), k = on ? nearMark(p) : null; ring.classList.toggle("pencil", on); chartHov = k ? k.id : null;
-  if (drag) { if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 12) drag.moved = true; drag.a = Math.round(Math.atan2(p[1] - drag.o[1], p[0] - drag.o[0]) / (Math.PI / 4)) * (Math.PI / 4); if (drag.moved) { const b = DN[(Math.round((drag.a + Math.PI / 2) / (Math.PI / 4)) + 16) % 8]; chartText(`Bearing ${b}. Let go to rule the line.`); showTip(b, e); if (!rTick) { rTick = true; setTimeout(() => { rTick = false; refresh(); }, 60); } } }
-  else if (k) showTip(`${k.name}: press and drag`, e); });
-addEventListener("mouseup", () => { if (!drag) return; const d = drag; drag = null; chartText(); $("tip").hidden = true; if (!d.moved) { chartSay("Hold the button down and drag away from the mark."); return; } if (!G.lines.some(l => l.o[0] === d.o[0] && l.o[1] === d.o[1] && Math.abs(l.a - d.a) < .01)) G.lines.push({ o: d.o, a: d.a }); sfx.pencil(); save(); refresh(); });
+C.addEventListener("mousedown", e => { if (view !== "tchart" || anyOpen() || !rec || busy) return; const p = svgAt(e), o = Object.entries(ORG()).find(([k, q]) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 15); if (o) { pickFrom(o[0]); return; } const sq = sqOf(p); if (sq) { cSq = sq; sfx.tick(); chartSay(`Square ${sqName(sq)}. Press Mark crossing to mark where lines cross in it.`); refresh(); } });
+addEventListener("mousemove", e => { if (view !== "tchart" || !rec || !W_ || !$("title").hidden) { ring.classList.remove("pencil"); chartHov = null; return; } const p = svgAt(e), on = e.target === C && !anyOpen() && inPaper(p), o = on ? Object.entries(ORG()).find(([k, q]) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 15) : null, was = chartHov; ring.classList.toggle("pencil", on); chartHov = o ? o[0] : null; if (o) showTip(o[0] === "t" ? "Rule from the tower" : "Rule from the harbour office", e); else if (was) $("tip").hidden = true; if (was !== chartHov) refresh(); });
+function pickFrom(k) { cFrom = k; sfx.tick(); $("cfT").classList.toggle("on", k === "t"); $("cfH").classList.toggle("on", k === "h"); chartSay(`Ruling from the ${k === "t" ? "tower" : "harbour office"}: type a bearing and press Draw line.`); $("cDeg").focus(); refresh(); }
+function listLines() { const L = G.clines || []; $("cLines").innerHTML = L.length ? L.map(l => `<span class="cl ${l.from}${l.dead ? " dead" : ""}">${l.from === "t" ? "Tower" : "Harbour"} ${pad3(l.deg)}&deg;</span>`).join("") : `<span class="cl none">No lines yet.</span>`; }
+function leftOne() { const L = (G.clines || []).filter(l => !l.dead); if (L.filter(l => l.from === "t").length < 1 || (G.clines || []).length < 6) return ""; const s_ = [...new Set(liveCrossings().map(p => sqName(sqOf(p))))]; return s_.length === 1 ? ` Only one crossing is left out on the water now: square ${s_[0]}.` : ""; }
+$("cfT").onclick = () => pickFrom("t"); $("cfH").onclick = () => pickFrom("h");
+$("cDeg").onkeydown = e => { e.stopPropagation(); if (e.key === "Enter") $("cDraw").click(); };
+$("cDeg").oninput = () => { $("cDeg").value = $("cDeg").value.replace(/\D/g, "").slice(0, 3); };
+$("cDraw").onclick = () => { const a = parseInt($("cDeg").value, 10); if (!cFrom) { chartSay("First choose the tower or the harbour office: click it on the chart."); return; } if (isNaN(a) || a < 0 || a > 359) { chartSay("Type a bearing from 000 to 359."); return; } G.clines = G.clines || []; if (G.clines.some(l => l.from === cFrom && l.deg === a)) { chartSay("That line is already on the chart."); return; }
+  G.clines.push({ from: cFrom, deg: a, dead: false }); $("cDeg").value = ""; sfx.pencil(); save(); chartSay(`Line ruled from the ${cFrom === "t" ? "tower" : "harbour office"} at ${pad3(a)}\u00b0.`); listLines(); refresh(); };
+$("cMark").onclick = () => { if (!cSq) { chartSay("Click a square on the chart first."); return; } const L = cLines(), found = []; for (const a of L) for (const b of L) { if (a.from !== "t" || b.from !== "h" || a.dead || b.dead) continue; const p = cCross(a, b), q = p && sqOf(p); if (q && q[0] === cSq[0] && q[1] === cSq[1]) found.push({ p, ids: [a.i, b.i] }); }
+  if (!found.length) { chartSay("No live lines cross in that square."); return; } const named = [];
+  for (const f of found) { const pl = PLACES().find(q => Math.hypot(q.p[0] - f.p[0], q.p[1] - f.p[1]) < 14); if (pl) { f.place = pl.name; f.ids.forEach(i => G.clines[i].dead = true); named.push(pl.name); } G.cmarks = [...(G.cmarks || []), f]; }
+  sfx.pencil(); save(); chartSay((named.length ? `That's ${[...new Set(named)].join(" and ")}, a light ashore. Its lines are crossed out.` : "Nothing is charted there. Something out on the water?") + leftOne()); listLines(); refresh(); };
+$("cRub").onclick = () => { G.clines = []; G.cmarks = []; cSq = null; save(); chartSay("Rubbed out."); listLines(); refresh(); };
+
 /* ---- the ending ---- */
 async function endFlow() {
   busy = true; hideM("journal"); hideM("call"); thought(null); $("read").hidden = true; $("flash").hidden = true; $("gt").hidden = true; $("marks").innerHTML = ""; $("edgeL").classList.remove("avail"); $("edgeR").classList.remove("avail"); $("clr").hidden = true; $("chartHelp").hidden = true; $("task").hidden = true; $("backZ").hidden = true; $("inv").hidden = true;
@@ -339,3 +368,27 @@ async function endFlow() {
 
 function firstOnce(key, fn) { try { if (localStorage.getItem(key)) return; localStorage.setItem(key, "1"); } catch (e) { return; } fn(); }
 addEventListener("mousemove", e => { const b = $("backZ"); if (b) b.classList.toggle("near", e.clientY > innerHeight * .8 && Math.abs(e.clientX - innerWidth / 2) < innerWidth * .3); });
+
+/* ---- bearings in degrees (David, 11 Nov): both places note the strange lights' bearings; the harbour rules them on the chart ---- */
+const LNAME = { glow: "steady glow", hall: "warm lights", flasher: "flashing light" };
+const pad3 = n => String(((Math.round(n) % 360) + 360) % 360).padStart(3, "0"), angd = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
+function noteBearing(who, az, cands) {
+  if (!(N && N.solved && N.solved[2])) { thought("This doesn't help us right now."); return; }
+  const have = (N && N.bearings) || {}, near = cands.map(x => [x, angd(x.az, az)]).filter(x => x[1] <= 2.5), fresh = near.filter(([x]) => !(x.strange && have[who + ":" + x.id] !== undefined)).sort((p, q) => (q[0].strange - p[0].strange) || (p[1] - q[1]));
+  if (!fresh.length) { sfx.tick(); toast(near.length ? "Already noted." : "There is no light out that way."); return; }
+  const L = fresh[0][0]; if (!L.strange) { sfx.tick(); toast(`That's ${L.label}. It's on the pilot's list.`); return; }
+  const key = who + ":" + L.id, dv = pad3(+L.deg); sfx.pencil(); N.bearings = { ...have, [key]: dv }; post({ bearings: { [key]: dv } }); toast(`Noted: bearing ${pad3(L.deg)}\u00b0, ${LNAME[L.id]}.`); corner("Bearing added to the notebook");
+}
+function towerLights() { const b = pub.docs.bearings_tower, d = pub.docs.decoys_tower; return [...Object.entries(b).map(([id, deg]) => ({ id, deg: +deg, az: +deg, strange: true })), ...Object.entries(d).map(([label, deg]) => ({ id: label, label, az: +deg, strange: false }))]; }
+function panoLights(t) { const b = pub.docs.bearings_tower, d = pub.docs.decoys_tower, f = flashAct ? 0 : 1;
+  return [[b.glow, 1.15, "255,236,200", 24], [b.hall, 1.15 + .15 * Math.sin(t * 2.1), "255,190,110", 32], [b.flasher, irr(t) * 1.9 * f, "255,250,235", 26],
+    [d["Black Hen lighthouse"], pat([.5, 1.5], 8, t) * 1.9 * f, "255,248,230", 24], [d["St Aldo's lighthouse"], pat([1.6], 5, t) * 1.9 * f, "255,248,230", 24], [d["Gannet Rock lighthouse"], pat([.5, .5, .5], 15, t) * 1.9 * f, "255,248,230", 24], [d["the harbour's own red light"], 1.3, "255,60,40", 18]]; }
+function harbourLights() { const V = W_.views.bayH.compass, h = rec.meta.hots, b = pub.docs.bearings_harbour, out = [], az = k => { const r = h[k]; return V[0] + (((r[0] + r[2]) / 2) - .5) * V[1]; };
+  for (const [k, id] of [["carn", "glow"], ["penmor", "hall"], ["false", "flasher"]]) if (h[k]) out.push({ id, deg: +b[id], az: az(k), strange: true });
+  for (const [k, label] of [["aldo", "St Aldo's lighthouse"], ["red", "the harbour's own red light"], ["blackhen", "Black Hen lighthouse"], ["gannet", "Gannet Rock lighthouse"]]) if (h[k]) out.push({ id: k, label, az: az(k), strange: false }); return out; }
+function harbourBearing(e) { if (view !== "bayH" || !rec) return; const [ix] = Engine.toImage(e.clientX, e.clientY), V = W_.views.bayH.compass; noteBearing("harbour", V[0] + (ix - .5) * V[1], harbourLights()); }
+function hbTape() { if (view !== "bayH" || !rec) return; const cv = $("hbTape"), V = W_.views.bayH.compass, w = cv.width = innerWidth, c = cv.getContext("2d"); cv.height = 46; c.clearRect(0, 0, w, 46); c.fillStyle = "rgba(10,7,4,.62)"; c.fillRect(0, 0, w, 46); c.strokeStyle = c.fillStyle = "#efe3c6"; c.font = "13px Georgia"; c.textAlign = "center";
+  for (let d = Math.floor(V[0] - V[1] / 2) - 2; d <= V[0] + V[1] / 2 + 2; d++) { const [x] = Engine.toScreen(.5 + (d - V[0]) / V[1], .5), dd = ((d % 360) + 360) % 360; if (x < 0 || x > w) continue; c.lineWidth = dd % 10 ? 1 : 1.5; c.beginPath(); c.moveTo(x, 46); c.lineTo(x, 46 - (dd % 10 ? (dd % 5 ? 6 : 10) : 16)); c.stroke(); if (dd % 10 === 0) c.fillText(pad3(dd), x, 22); } }
+addEventListener("resize", () => { if (view === "bayH") hbTape(); });
+addEventListener("mousemove", e => { if (view !== "bayH" || $("hbc").hidden) return; const l = $("hbLine"), V = W_.views.bayH.compass, [ix] = Engine.toImage(e.clientX, e.clientY); l.style.left = e.clientX + "px"; $("hbRead").textContent = pad3(V[0] + (ix - .5) * V[1]) + "\u00b0"; });
+$("noteB").onclick = () => { sfx.tick(); noteBearing("tower", ((head % 360) + 360) % 360, towerLights()); };
