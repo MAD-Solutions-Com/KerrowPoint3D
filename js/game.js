@@ -284,15 +284,26 @@ let panoImg = null, head = 0, headGo = null, panoRAF = 0;
 const PTS8 = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"], headName = () => PTS8[Math.round(((head % 360) + 360) % 360 / 45) % 8];
 function panoOff() { document.body.classList.remove("inpano"); $("pano").hidden = true; $("rose").hidden = true; $("noteP").hidden = true; $("panoBack").hidden = true; cancelAnimationFrame(panoRAF); }
 async function enterPano(name) {
-  if (!panoImg) { $("loadHint").hidden = false; panoImg = await new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = "rooms/lamp/gpano.jpg"; }); $("loadHint").hidden = true; if (!panoImg) { toast("That picture failed to load. Check your connection and try again."); return; } }
+  if (!panoImg) { $("loadHint").hidden = false; panoImg = await loadGallery(); $("loadHint").hidden = true; if (!panoImg) { toast("That picture failed to load. Check your connection and try again."); return; } }
   view = name; G.at = name; save(); ambSet(ambFor(name)); noteClue("sight"); $("marks").innerHTML = ""; $("read").hidden = false; ["edgeL", "edgeR"].forEach(e => $(e).classList.remove("avail")); $("flash").hidden = true; $("clr").hidden = true; $("chartHelp").hidden = true;
   const firstLook = !(G.saw || {})[name]; if (firstLook) { G.saw = { ...(G.saw || {}), [name]: 1 }; save(); } thought(firstLook ? W_.views[name].thought : null);
   document.body.classList.add("inpano"); $("pano").hidden = false; $("rose").hidden = false; $("noteP").hidden = false; $("backZ").hidden = false; drawPano(); }
+let GP = { meta: null, water: null, dry: null };
+const imgP = src => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+async function loadGallery() { let meta = null; try { meta = (await (await fetch("rooms/gallery.json")).json()).gpano; } catch (e) {}
+  const im = await imgP(meta ? "rooms/gallery/gpano/b.jpg" : "rooms/lamp/gpano.jpg"); if (!im) return null; GP.meta = meta; if (!meta || !meta.water) return im;
+  const wm = await imgP("rooms/gallery/gpano/w.jpg"); if (!wm) return im;
+  try { const mk = (inv) => { const cv = document.createElement("canvas"); cv.width = im.width; cv.height = im.height; const c = cv.getContext("2d"); c.drawImage(wm, 0, 0, im.width, im.height); const d = c.getImageData(0, 0, im.width, im.height), a = d.data; for (let i = 0; i < a.length; i += 4) { const v = a[i]; a[i + 3] = inv ? 255 - v : v; a[i] = a[i + 1] = a[i + 2] = 0; } c.putImageData(d, 0, 0); c.globalCompositeOperation = "source-in"; c.drawImage(im, 0, 0); return cv; };
+    GP.water = mk(false); GP.dry = mk(true); } catch (e) { GP.water = GP.dry = null; }
+  return im; }
+const GROW = { glow: "carn", hall: "penmor", flasher: "false", "Black Hen lighthouse": "blackhen", "St Aldo's lighthouse": "aldo", "Gannet Rock lighthouse": "gannet", "the harbour's own red light": "red" };
 function drawPano() { const cv = $("pano"), c = cv.getContext("2d"), W = cv.width = innerWidth, H = cv.height = innerHeight, im = panoImg, Wp = im.width, Hp = im.height, sh = Hp * .78, s = H / sh, sw = W / s, y0 = Hp * .1;
   if (headGo !== null) { const d = ((headGo - head + 540) % 360) - 180; head += Math.abs(d) < .4 ? d : d * .18; if (Math.abs(d) < .4) headGo = null; }
-  const cx = ((head / 360 + .5) * Wp - sw / 2 + Wp * 4) % Wp; c.drawImage(im, cx, y0, Math.min(sw, Wp - cx), sh, 0, 0, Math.min(sw, Wp - cx) * s, H); if (cx + sw > Wp) c.drawImage(im, 0, y0, cx + sw - Wp, sh, (Wp - cx) * s, 0, (cx + sw - Wp) * s, H);
-  const t = performance.now() / 1000, hy = (Hp * .528 - y0) * s, L = panoLights(t);
-  for (const [az, i, col, r] of L) { if (i <= 0) continue; dx = ((az - head + 540) % 360 - 180) / 360 * Wp * s, x = W / 2 + dx; if (x < -60 || x > W + 60) continue; const gr = c.createRadialGradient(x, hy, 0, x, hy, r * 2.4); gr.addColorStop(0, `rgba(${col},${Math.min(1, i)})`); gr.addColorStop(.25, `rgba(${col},${Math.min(.5, i * .4)})`); gr.addColorStop(1, `rgba(${col},0)`); c.fillStyle = gr; c.fillRect(x - r * 3, hy - r * 3, r * 6, r * 6); }
+  const cx = ((head / 360 + .5) * Wp - sw / 2 + Wp * 4) % Wp, part = (src, sy, shh, xo) => { const x0 = ((cx + xo) % Wp + Wp) % Wp, w1 = Math.min(sw, Wp - x0), dy = (sy - y0) * s, dh = shh * s; c.drawImage(src, x0, sy, w1, shh, 0, dy, w1 * s, dh); if (w1 < sw) c.drawImage(src, 0, sy, sw - w1, shh, w1 * s, dy, (sw - w1) * s, dh); };
+  part(im, y0, sh, 0);
+  if (GP.water) { const tt = performance.now() / 1000, hz = Hp * .45, bot = y0 + sh, st = Math.max(2, Math.round(Hp / 320)); for (let y = Math.floor(hz); y < bot; y += st) { const k = (y - hz) / (bot - hz), a = (.6 + 3.2 * k * k) * (Wp / 6144); part(GP.water, y, st + 1, a * Math.sin(tt * 1.5 + y * .19) + a * .55 * Math.sin(tt * .8 - y * .061)); } part(GP.dry, Math.floor(hz) - 2, bot - Math.floor(hz) + 2, 0); }
+  const t = performance.now() / 1000, hy0 = (Hp * .528 - y0) * s, L = panoLights(t), hyOf = k => { const h = GP.meta && GP.meta.hots && GP.meta.hots[GROW[k]]; return h ? ((h[1] + h[3]) / 2 * Hp - y0) * s : hy0; };
+  for (const [az, i, col, r, nm] of L) { if (i <= 0) continue; const hy = hyOf(nm); dx = ((az - head + 540) % 360 - 180) / 360 * Wp * s, x = W / 2 + dx; if (x < -60 || x > W + 60) continue; const gr = c.createRadialGradient(x, hy, 0, x, hy, r * 2.4); gr.addColorStop(0, `rgba(${col},${Math.min(1, i)})`); gr.addColorStop(.25, `rgba(${col},${Math.min(.5, i * .4)})`); gr.addColorStop(1, `rgba(${col},0)`); c.fillStyle = gr; c.fillRect(x - r * 3, hy - r * 3, r * 6, r * 6); }
   $("roseCard").style.transform = `rotate(${-head}deg)`; $("roseRead").textContent = pad3(head) + "\u00b0";
   panoRAF = requestAnimationFrame(() => { if (!$("pano").hidden) drawPano(); }); }
 (() => { const P = $("pano"); let x0 = null, h0 = 0; P.onpointerdown = e => { x0 = e.clientX; h0 = head; headGo = null; P.setPointerCapture && P.setPointerCapture(e.pointerId); }; P.onpointermove = e => { if (x0 === null) return; head = h0 - (e.clientX - x0) * (360 / (panoImg.width * (innerHeight / (panoImg.height * .78)))); };
@@ -392,8 +403,8 @@ function noteBearing(who, az, cands) {
 }
 function towerLights() { const b = pub.docs.bearings_tower, d = pub.docs.decoys_tower; return [...Object.entries(b).map(([id, deg]) => ({ id, deg: +deg, az: +deg, strange: true })), ...Object.entries(d).map(([label, deg]) => ({ id: label, label, az: +deg, strange: false }))]; }
 function panoLights(t) { const b = pub.docs.bearings_tower, d = pub.docs.decoys_tower, f = flashAct ? 0 : 1;
-  return [[b.glow, 1.15, "255,236,200", 24], [b.hall, 1.15 + .15 * Math.sin(t * 2.1), "255,190,110", 32], [b.flasher, irr(t) * 1.9 * f, "255,250,235", 26],
-    [d["Black Hen lighthouse"], pat([.5, 1.5], 8, t) * 1.9 * f, "255,248,230", 24], [d["St Aldo's lighthouse"], pat([1.6], 5, t) * 1.9 * f, "255,248,230", 24], [d["Gannet Rock lighthouse"], pat([.5, .5, .5], 15, t) * 1.9 * f, "255,248,230", 24], [d["the harbour's own red light"], 1.3, "255,60,40", 18]]; }
+  return [[b.glow, 1.15, "255,236,200", 24, "glow"], [b.hall, 1.15 + .15 * Math.sin(t * 2.1), "255,190,110", 32, "hall"], [b.flasher, irr(t) * 1.9 * f, "255,250,235", 26, "flasher"],
+    [d["Black Hen lighthouse"], pat([.5, 1.5], 8, t) * 1.9 * f, "255,248,230", 24, "Black Hen lighthouse"], [d["St Aldo's lighthouse"], pat([1.6], 5, t) * 1.9 * f, "255,248,230", 24, "St Aldo's lighthouse"], [d["Gannet Rock lighthouse"], pat([.5, .5, .5], 15, t) * 1.9 * f, "255,248,230", 24, "Gannet Rock lighthouse"], [d["the harbour's own red light"], 1.3, "255,60,40", 18, "the harbour's own red light"]]; }
 function harbourLights() { const V = W_.views.bayH.compass, h = rec.meta.hots, b = pub.docs.bearings_harbour, out = [], az = k => { const r = h[k]; return V[0] + (((r[0] + r[2]) / 2) - .5) * V[1]; };
   for (const [k, id] of [["carn", "glow"], ["penmor", "hall"], ["false", "flasher"]]) if (h[k]) out.push({ id, deg: +b[id], az: az(k), strange: true });
   for (const [k, label] of [["aldo", "St Aldo's lighthouse"], ["red", "the harbour's own red light"], ["blackhen", "Black Hen lighthouse"], ["gannet", "Gannet Rock lighthouse"]]) if (h[k]) out.push({ id: k, label, az: az(k), strange: false }); return out; }
