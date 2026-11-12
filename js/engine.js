@@ -108,11 +108,15 @@ void main(){
   /* full-screen film as a plain video, hardware decoded; rain is a cheap CSS layer on top. */
   let paused = false, rainUrl = null;
   function rainTile() { if (rainUrl) return rainUrl; const c = document.createElement("canvas"); c.width = c.height = 512; const x = c.getContext("2d"); x.strokeStyle = "rgba(190,210,240,.34)"; x.lineWidth = 1.1; for (let i = 0; i < 170; i++) { const a = Math.random() * 512, b = Math.random() * 512, l = 20 + Math.random() * 46; x.globalAlpha = .25 + Math.random() * .75; for (const [dx, dy] of [[0, 0], [512, 0], [0, 512], [-512, 0], [0, -512]]) { x.beginPath(); x.moveTo(a + dx, b + dy); x.lineTo(a + dx - l * .13, b + dy + l); x.stroke(); } } rainUrl = c.toDataURL(); return rainUrl; }
-  function playVideo(src, cap, sub, max, hold) { return new Promise(res => { const t0_ = performance.now();
-    paused = true; const v = document.createElement("video"); v.src = src; v.muted = true; v.playsInline = true; v.preload = "auto"; v.className = "film";
+  /* the film fades in once it really plays; onStart fires then, so voice and sounds never run ahead of a slow download */
+  function playVideo(src, cap, sub, max, hold, onStart) { return new Promise(res => { let t0_ = 0, started = false;
+    paused = true; const v = document.createElement("video"); v.src = src; v.muted = true; v.playsInline = true; v.preload = "auto"; v.className = "film"; v.style.opacity = 0; v.style.transition = "opacity 1.2s ease-out";
     const rain = document.createElement("div"); rain.className = "rainfx"; rain.style.backgroundImage = `url(${rainTile()})`; const r2 = rain.cloneNode(); r2.className = "rainfx two";
-    const capEl = document.createElement("div"); capEl.id = "vidCap"; capEl.innerHTML = cap ? `<b>${cap}</b><i>${sub}</i>` : ""; const skip = document.createElement("button"); skip.id = "vidSkip"; skip.textContent = "Skip"; document.body.append(v, rain, r2, capEl, skip); setTimeout(() => capEl.style.opacity = 0, 3500);
-    let done = false; const finish = () => { if (done) return; done = true; v.pause(); [v, rain, r2, capEl, skip].forEach(e => e.remove()); paused = false; res(); }; skip.onclick = finish; v.onended = () => { const left = (hold || 0) * 1000 - (performance.now() - t0_); if (left > 0) setTimeout(finish, left); else finish(); }; v.onerror = finish; setTimeout(finish, (max || 15) * 1000);
+    const capEl = document.createElement("div"); capEl.id = "vidCap"; capEl.style.opacity = 0; capEl.innerHTML = cap ? `<b>${cap}</b><i>${sub}</i>` : ""; const skip = document.createElement("button"); skip.id = "vidSkip"; skip.textContent = "Skip the film"; document.body.append(v, rain, r2, capEl, skip); void v.offsetWidth; void capEl.offsetWidth;   // let the browser see opacity 0 first, so the fade-in really runs
+    let done = false; const finish = () => { if (done) return; done = true; v.pause(); [v, rain, r2, capEl, skip].forEach(e => e.remove()); paused = false; res(); }; skip.onclick = finish; v.onerror = finish;
+    v.onended = () => { const left = (hold || 0) * 1000 - (performance.now() - t0_); if (left > 0) setTimeout(finish, left); else finish(); };
+    v.onplaying = () => { if (started) return; started = true; t0_ = performance.now(); v.style.opacity = 1; capEl.style.opacity = 1; setTimeout(() => capEl.style.opacity = 0, 4500); setTimeout(finish, (max || 15) * 1000); if (onStart) onStart(); };
+    setTimeout(() => { if (!started) finish(); }, 20000);
     const go = () => v.play().catch(finish); v.oncanplaythrough = go; setTimeout(go, 1500);
   }); }
   function show(rec) { cur = rec; }
