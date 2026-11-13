@@ -52,7 +52,8 @@
 6144,
 938
 ],
-"water": true
+"water": true,
+"loop": true
 },
 "bayT": {
 "flat": false,

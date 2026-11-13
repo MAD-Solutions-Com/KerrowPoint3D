@@ -116,7 +116,8 @@
 1920,
 1080
 ],
-"water": true
+"water": true,
+"loop": true
 },
 "ending": {
 "flat": false,

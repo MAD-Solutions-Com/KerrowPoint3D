@@ -576,6 +576,8 @@
 "flat": false,
 "hots": {},
 "overlays": {},
+"polys": {},
+"markAt": {},
 "res": [
 2560,
 1440
