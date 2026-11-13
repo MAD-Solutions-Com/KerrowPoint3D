@@ -4,7 +4,7 @@ const Engine = (() => {
 out vec2 v;void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);v=p;gl_Position=vec4(p*2.-1.,0,1);}`;
   const FS = `#version 300 es
 precision highp float;in vec2 v;out vec4 o;
-uniform sampler2D B,M,S,WM,LV;uniform float hasLV,t,flash,alpha,zoom,rain,LAll;uniform vec2 sc,zc;uniform vec4 LP[9];uniform vec3 LC[9];uniform vec3 beam;
+uniform sampler2D B,M,S,WM,LV;uniform float hasLV,t,flash,alpha,zoom,rain,LAll;uniform vec2 sc,zc;uniform vec4 LP[16];uniform vec3 LC[16];uniform vec3 beam;
 float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
 float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<5;i++){s+=a*n(p);p=p*2.03+7.1;a*=.5;}return s;}
@@ -36,7 +36,7 @@ void main(){
       float sw=fbm(wp*vec2(14.,40.)+vec2(t*.18,-t*.03));c*=1.+wa*.16*(sw-.5);
       float gl=smoothstep(.72,.95,fbm(wp*vec2(60.,140.)+vec2(t*.5,t*.1)));c+=wa*gl*c*.6;}
     else c=texture(B,p).rgb;}
-  for(int i=0;i<9;i++){if(LP[i].z>.001){vec2 dl=(uv-LP[i].xy)*vec2(16./9.,1.);float gg=exp(-dot(dl,dl)/(LP[i].w*LP[i].w));c+=LC[i]*gg*LP[i].z*max(LAll,W);}}
+  for(int i=0;i<16;i++){if(LP[i].z>.001){vec2 dl=(uv-LP[i].xy)*vec2(16./9.,1.);float gg=exp(-dot(dl,dl)/(LP[i].w*LP[i].w));c+=LC[i]*gg*LP[i].z*max(LAll,W);}}
   vec3 s=texture(S,p).rgb;
   c*=1.+s.r*(f1-1.)+s.g*(f2-1.)+s.b*flash*2.;
   c+=flash*.02*vec3(.5,.6,1.);
@@ -84,7 +84,7 @@ void main(){
     if (draw) draw(c2, W, H);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, rec.T.b); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, rec.cv); gl.generateMipmap(gl.TEXTURE_2D);
   }
-  const lp = new Float32Array(36), lc = new Float32Array(27);
+  const lp = new Float32Array(64), lc = new Float32Array(48);
   let cur = null, trans = null, fl = 0, nextF = 5;
   const scale = () => { const a = innerWidth / innerHeight, ia = 16 / 9; return [a > ia ? 1 : a / ia, a > ia ? ia / a : 1]; };
   function toScreen(x, y) { const [sx, sy] = scale(); return [((x - .5) / sx + .5) * innerWidth, ((y - .5) / sy + .5) * innerHeight]; }
@@ -96,7 +96,7 @@ void main(){
     else gl.bindTexture(gl.TEXTURE_2D, noWater());
     gl.uniform1f(U.hasLV, hasLV);
     gl.uniform1f(U.alpha, alpha); gl.uniform1f(U.zoom, zoom); gl.uniform2f(U.zc, zc[0], zc[1]); gl.uniform1f(U.rain, rec.opts.rain ? 1 : 0); gl.uniform1f(U.t, t); gl.uniform1f(U.flash, fv);
-    const ls = rec.opts.lights ? rec.opts.lights(t) : []; lp.fill(0); lc.fill(0); ls.slice(0, 9).forEach((l, i) => { lp.set([l.x, l.y, l.i, l.r || .011], i * 4); lc.set(l.c, i * 3); }); gl.uniform4fv(U.LP, lp); gl.uniform3fv(U.LC, lc); gl.uniform1f(U.LAll, rec.opts.allLights ? 1 : 0); const bm = rec.opts.beam; gl.uniform3f(U.beam, bm ? bm[0] : -1, bm ? bm[1] : -1, t * .7);
+    const ls = rec.opts.lights ? rec.opts.lights(t) : []; lp.fill(0); lc.fill(0); ls.slice(0, 16).forEach((l, i) => { lp.set([l.x, l.y, l.i, l.r || .011], i * 4); lc.set(l.c, i * 3); }); gl.uniform4fv(U.LP, lp); gl.uniform3fv(U.LC, lc); gl.uniform1f(U.LAll, rec.opts.allLights ? 1 : 0); const bm = rec.opts.beam; gl.uniform3f(U.beam, bm ? bm[0] : -1, bm ? bm[1] : -1, t * .7);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
   let dpCap = Math.min(devicePixelRatio, 1.5), lastMs = 0, slow = 0, fcount = 0;
