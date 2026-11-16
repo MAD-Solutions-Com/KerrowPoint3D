@@ -4,7 +4,7 @@ const Engine = (() => {
 out vec2 v;void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);v=p;gl_Position=vec4(p*2.-1.,0,1);}`;
   const FS = `#version 300 es
 precision highp float;in vec2 v;out vec4 o;
-uniform sampler2D B,M,S,WM,LV;uniform float hasLV,t,flash,alpha,zoom,rain,LAll;uniform vec2 sc,zc;uniform vec4 LP[16];uniform vec3 LC[16];uniform vec3 beam;
+uniform sampler2D B,M,S,WM,LV;uniform float hasLV,t,flash,alpha,zoom,rain,LAll;uniform vec2 sc,zc;uniform vec4 LP[16];uniform vec3 LC[16];uniform vec3 beam;uniform vec3 pv;
 float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
 float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<5;i++){s+=a*n(p);p=p*2.03+7.1;a*=.5;}return s;}
@@ -12,7 +12,7 @@ float n1(float x){return n(vec2(x,3.7));}
 vec3 beads(vec2 st,float sz,float seed){vec2 g=st*sz+seed;vec2 id=floor(g),f=fract(g)-.5;vec2 c=vec2(h(id+seed),h(id+seed+3.1))-.5;float r=.07+.2*h(id+seed+9.);if(h(id+seed+5.)<.35)return vec3(0);vec2 d=(f-c*.6)*vec2(1.,.82);float l=length(d);float m=smoothstep(r,r*.72,l);return vec3(d/r*m,m);}
 vec3 runner(vec2 st,float cols,float sp,float seed,inout float tr){vec2 q=st*vec2(cols,cols*.3);float cx=floor(q.x);float r=h(vec2(cx,seed));if(r<.4)return vec3(0);q.y+=t*sp*(.5+r)+r*9.;float cy=floor(q.y);float rr=h(vec2(cx,cy+seed));vec2 f=fract(q)-.5;float dx=f.x-(rr-.5)*.45-sin(q.y*7.+rr*6.)*.05;float yy=f.y-(rr-.5)*.2;float d=length(vec2(dx,yy*.34));float m=smoothstep(.12,.07,d);tr+=smoothstep(.07,.015,abs(dx))*smoothstep(0.,.5,yy)*(1.-smoothstep(.3,.5,yy))*.9;return vec3(vec2(dx,yy*.34)/.12*m,m);}
 void main(){
-  vec2 uv=(v-.5)*sc+.5; uv=zc+(uv-zc)/zoom; vec2 p=uv;
+  vec2 uv=(v-.5)*sc+.5; uv=pv.xy+(uv-.5)/pv.z; uv=zc+(uv-zc)/zoom; vec2 p=uv;
   vec3 mk=texture(M,p).rgb;float W=smoothstep(.2,.8,mk.r);
   float flick=fbm(vec2(t*5.,1.))*.5+n1(t*17.)*.25;float f1=.86+.34*flick;float f2=.8+.45*fbm(vec2(t*1.7,9.));
   p.x+=mk.g*sin(t*11.)*.0006*flick;
@@ -36,7 +36,7 @@ void main(){
       float sw=fbm(wp*vec2(14.,40.)+vec2(t*.18,-t*.03));c*=1.+wa*.16*(sw-.5);
       float gl=smoothstep(.72,.95,fbm(wp*vec2(60.,140.)+vec2(t*.5,t*.1)));c+=wa*gl*c*.6;}
     else c=texture(B,p).rgb;}
-  for(int i=0;i<16;i++){if(LP[i].z>.001){vec2 dl=(uv-LP[i].xy)*vec2(16./9.,1.);float gg=exp(-dot(dl,dl)/(LP[i].w*LP[i].w));c+=LC[i]*gg*LP[i].z*max(LAll,W);}}
+  for(int i=0;i<16;i++){if(LP[i].z>.001){vec2 dl=(uv-LP[i].xy)*vec2(16./9.,1.);float gg=exp(-dot(dl,dl)/(LP[i].w*LP[i].w));float gc=exp(-dot(dl,dl)/(LP[i].w*LP[i].w*.045));c+=(LC[i]*gg*.85+mix(LC[i],vec3(1.),.6)*gc*1.35)*LP[i].z*max(LAll,W);}}
   vec3 s=texture(S,p).rgb;
   c*=1.+s.r*(f1-1.)+s.g*(f2-1.)+s.b*flash*2.;
   c+=flash*.02*vec3(.5,.6,1.);
@@ -50,7 +50,7 @@ void main(){
   if (!gl) { document.body.innerHTML = '<p style="color:#ddd;padding:40px;font:18px Georgia">This game needs a browser with WebGL 2.</p>'; throw new Error("no webgl2"); }
   function sh(k, s) { const x = gl.createShader(k); gl.shaderSource(x, s); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(x); return x; }
   const P = gl.createProgram(); gl.attachShader(P, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(P, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(P); gl.useProgram(P); gl.bindVertexArray(gl.createVertexArray());
-  const U = {}; for (const n of ["t", "flash", "alpha", "zoom", "rain", "sc", "zc", "LP", "LC", "LAll", "beam", "B", "M", "S", "WM", "LV", "hasLV"]) U[n] = gl.getUniformLocation(P, n);
+  const U = {}; for (const n of ["t", "flash", "alpha", "zoom", "rain", "sc", "zc", "LP", "LC", "LAll", "beam", "pv", "B", "M", "S", "WM", "LV", "hasLV"]) U[n] = gl.getUniformLocation(P, n);
   gl.uniform1i(U.B, 0); gl.uniform1i(U.M, 1); gl.uniform1i(U.S, 2); gl.uniform1i(U.WM, 3); gl.uniform1i(U.LV, 4); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   const cache = new Map(), rooms = {};
   const img = u => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("image failed: " + u)); i.src = u; });
@@ -87,34 +87,46 @@ void main(){
   const lp = new Float32Array(64), lc = new Float32Array(48);
   let cur = null, trans = null, fl = 0, nextF = 5;
   const scale = () => { const a = innerWidth / innerHeight, ia = 16 / 9; return [a > ia ? 1 : a / ia, a > ia ? ia / a : 1]; };
-  function toScreen(x, y) { const [sx, sy] = scale(); return [((x - .5) / sx + .5) * innerWidth, ((y - .5) / sy + .5) * innerHeight]; }
-  function toImage(cx, cy) { const [sx, sy] = scale(), x = cx / innerWidth, y = 1 - cy / innerHeight; return [(x - .5) * sx + .5, 1 - ((y - .5) * sy + .5)]; }
-  function draw(rec, alpha, zoom, zc, t, fv) {
+  /* round 5: a view can be panned and zoomed (office sea view, spyglass, narrow screens): opts.view = [x, y, zoom], x/y the image point at the screen centre (y down) */
+  const PV = r => (r && r.opts && r.opts.view) || [.5, .5, 1];
+  function clampView(v) { const [sx, sy] = scale(), hx = sx / 2 / v[2], hy = sy / 2 / v[2]; if (!(hx > 0 && hy > 0) || !isFinite(hx + hy)) return [isFinite(v[0]) ? v[0] : .5, isFinite(v[1]) ? v[1] : .5, v[2] || 1]; return [Math.min(1 - hx, Math.max(hx, v[0])), Math.min(1 - hy, Math.max(hy, v[1])), v[2]]; }
+  function toScreen(x, y) { const [sx, sy] = scale(), v = PV(cur); x = .5 + (x - v[0]) * v[2]; y = .5 + (y - v[1]) * v[2]; return [((x - .5) / sx + .5) * innerWidth, ((y - .5) / sy + .5) * innerHeight]; }
+  function toImage(cx, cy) { const [sx, sy] = scale(), v = PV(cur), x = cx / innerWidth, y = 1 - cy / innerHeight; const ix = (x - .5) * sx + .5, iy = 1 - ((y - .5) * sy + .5); return [v[0] + (ix - .5) / v[2], v[1] + (iy - .5) / v[2]]; }
+  function draw(rec, alpha, zoom, zc, t, fv, pvo) {
     const T = rec.T; [T.b, T.m, T.s, T.w || noWater()].forEach((x, i) => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, x); });
     let hasLV = 0; gl.activeTexture(gl.TEXTURE4);
     if (rec.lv && rec.lv.readyState >= 2) { if (rec.lv.paused) rec.lv.play().catch(() => {}); gl.bindTexture(gl.TEXTURE_2D, T.lv); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, rec.lv); hasLV = 1; }
     else gl.bindTexture(gl.TEXTURE_2D, noWater());
     gl.uniform1f(U.hasLV, hasLV);
     gl.uniform1f(U.alpha, alpha); gl.uniform1f(U.zoom, zoom); gl.uniform2f(U.zc, zc[0], zc[1]); gl.uniform1f(U.rain, rec.opts.rain ? 1 : 0); gl.uniform1f(U.t, t); gl.uniform1f(U.flash, fv);
-    const ls = rec.opts.lights ? rec.opts.lights(t) : []; lp.fill(0); lc.fill(0); ls.slice(0, 16).forEach((l, i) => { lp.set([l.x, l.y, l.i, l.r || .011], i * 4); lc.set(l.c, i * 3); }); gl.uniform4fv(U.LP, lp); gl.uniform3fv(U.LC, lc); gl.uniform1f(U.LAll, rec.opts.allLights ? 1 : 0); const bm = rec.opts.beam; gl.uniform3f(U.beam, bm ? bm[0] : -1, bm ? bm[1] : -1, t * .7);
+    const ls = rec.opts.lights ? rec.opts.lights(t) : []; lp.fill(0); lc.fill(0); ls.slice(0, 16).forEach((l, i) => { lp.set([l.x, l.y, l.i, l.r || .011], i * 4); lc.set(l.c, i * 3); }); gl.uniform4fv(U.LP, lp); gl.uniform3fv(U.LC, lc); gl.uniform1f(U.LAll, rec.opts.allLights ? 1 : 0); const bm = rec.opts.beam; gl.uniform3f(U.beam, bm ? bm[0] : -1, bm ? bm[1] : -1, t * .7); const pv_ = pvo || PV(rec); gl.uniform3f(U.pv, pv_[0], 1 - pv_[1], pv_[2]);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
   let dpCap = Math.min(devicePixelRatio, 1.5), lastMs = 0, slow = 0, fcount = 0;
-  function frame(ms) {
-    if (paused) { requestAnimationFrame(frame); return; }
+  function step(ms) {
+    if (paused) return;
     if (ms - lastMs < 200) { slow += ms - lastMs; if (++fcount >= 45) { if (slow / fcount > 27 && dpCap > .75) dpCap -= .25; slow = 0; fcount = 0; } } lastMs = ms;
     const t = ms / 1000, dp = dpCap, w = innerWidth * dp | 0, h = innerHeight * dp | 0; if (canvas.width != w || canvas.height != h) { canvas.width = w; canvas.height = h; gl.viewport(0, 0, w, h); }
     if (t > nextF) { nextF = t + 8 + Math.random() * 14; fl = 1 + Math.random() * .5; } fl *= .9; const fv = fl * (.5 + .5 * Math.sin(t * 38));
     const [sx, sy] = scale(); gl.uniform2f(U.sc, sx, sy);
     if (trans) {
       const k = Math.min((t - (trans.t0 ?? (trans.t0 = t))) / trans.dur, 1), e = k * k * (3 - 2 * k);
+      if (trans.slide) {   // round 5: the office sections slide sideways, like turning to the next part of the room
+        const s = trans.slide, W = canvas.width, H = canvas.height, [sx] = scale(), vf = PV(trans.from), vt = PV(trans.to), cut = Math.round(W * (s > 0 ? 1 - e : e));
+        gl.disable(gl.BLEND); gl.enable(gl.SCISSOR_TEST);
+        gl.scissor(s > 0 ? 0 : cut, 0, s > 0 ? cut : W - cut, H); draw(trans.from, 1, 1, [.5, .5], t, fv, [vf[0] + s * e * sx / vf[2], vf[1], vf[2]]);
+        gl.scissor(s > 0 ? cut : 0, 0, s > 0 ? W - cut : cut, H); draw(trans.to, 1, 1, [.5, .5], t, fv, [vt[0] - s * (1 - e) * sx / vt[2], vt[1], vt[2]]);
+        gl.disable(gl.SCISSOR_TEST);
+      } else {
       gl.disable(gl.BLEND); draw(trans.from, 1, 1 + (trans.dir > 0 ? .04 : -.02) * e, trans.zc, t, fv);
-      gl.enable(gl.BLEND); draw(trans.to, e, (trans.dir > 0 ? .98 : 1.04) + (trans.dir > 0 ? .02 : -.04) * e, trans.zc, t, fv); gl.disable(gl.BLEND);
+      gl.enable(gl.BLEND); draw(trans.to, e, (trans.dir > 0 ? .98 : 1.04) + (trans.dir > 0 ? .02 : -.04) * e, trans.zc, t, fv); gl.disable(gl.BLEND); }
       if (k >= 1) { cur = trans.to; const d = trans.done; trans = null; d && d(); }
     } else if (cur) { gl.disable(gl.BLEND); draw(cur, 1, 1, [.5, .5], t, fv); }
-    requestAnimationFrame(frame);
   }
+  let lastRaf = 0; function frame(ms) { lastRaf = performance.now(); step(ms); requestAnimationFrame(frame); }
   requestAnimationFrame(frame);
+  /* testing aid: with #tick in the address, keep drawing while the tab is hidden (a hidden browser pane pauses requestAnimationFrame) */
+  if (location.hash.includes("tick")) setInterval(() => { if (performance.now() - lastRaf > 150) step(performance.now()); }, 40);
   /* full-screen film as a plain video, hardware decoded; rain is a cheap CSS layer on top. */
   let paused = false, rainUrl = null;
   function rainTile() { if (rainUrl) return rainUrl; const c = document.createElement("canvas"); c.width = c.height = 512; const x = c.getContext("2d"); x.strokeStyle = "rgba(190,210,240,.34)"; x.lineWidth = 1.1; for (let i = 0; i < 170; i++) { const a = Math.random() * 512, b = Math.random() * 512, l = 20 + Math.random() * 46; x.globalAlpha = .25 + Math.random() * .75; for (const [dx, dy] of [[0, 0], [512, 0], [0, 512], [-512, 0], [0, -512]]) { x.beginPath(); x.moveTo(a + dx, b + dy); x.lineTo(a + dx - l * .13, b + dy + l); x.stroke(); } } rainUrl = c.toDataURL(); return rainUrl; }
@@ -130,6 +142,6 @@ void main(){
     const go = () => v.play().catch(finish); v.oncanplaythrough = go; setTimeout(go, 1500);
   }); }
   function show(rec) { cur = rec; }
-  function go(rec, dir, zc, done) { if (!cur) { cur = rec; done && done(); return; } trans = { from: cur, to: rec, dir, zc: zc || [.5, .5], dur: .3, done }; }
-  return { load, trim, compose, show, go, playVideo, toImage, toScreen, busy: () => !!trans, current: () => cur, canvas };
+  function go(rec, dir, zc, done) { if (!cur) { cur = rec; done && done(); return; } trans = { from: cur, to: rec, dir, zc: zc || [.5, .5], dur: .3, done, slide: Math.abs(dir) === 2 ? Math.sign(dir) : 0 }; }
+  return { load, trim, compose, show, go, playVideo, toImage, toScreen, clampView, scale, busy: () => !!trans, current: () => cur, canvas, lightning(k) { fl = Math.max(fl, k || 1.6); } };
 })();
